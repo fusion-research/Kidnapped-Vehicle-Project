@@ -86,6 +86,11 @@ class ParticleFilter {
   void resample();
 
   /**
+   * Method stores weights from particles to weight vector.
+   */
+  void keepWeights();
+
+  /**
    * Set a particles list of associations, along with the associations'
    *   calculated world x,y coordinates
    * This can be a very useful debugging tool to make sure transformations 
