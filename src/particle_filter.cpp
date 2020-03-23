@@ -25,10 +25,10 @@ using std::normal_distribution;
 using std::max_element;
 
 #define EPS 0.00001
+#define INIT_WEIGHT 1.0
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-    num_particles = 30;  // the number of particles
-
+    num_particles = 100;  // the number of particles
     // This line creates a normal (Gaussian) distribution for x
     normal_distribution<double> dist_x(x, std[0]);
     // Create normal distributions for y
@@ -36,12 +36,11 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     // Create normal distributions for theta
     normal_distribution<double> dist_theta(theta, std[2]);
     
-    cout << num_particles << endl;
+    cout << "Number of particles = " << num_particles << endl;
 
     /* ***  init particles  *** */
     for (int i = 0; i < num_particles; i++) {
-        // weight to 1.0
-        weights.push_back(1.0);
+        weights.push_back(INIT_WEIGHT);
 
         // init particle
         Particle p = Particle();
@@ -78,9 +77,11 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
         }
         else
         {
-            p->x += velocity / yaw_rate * (sin(theta + yaw_rate * delta_t) - sin(theta));
-            p->y += velocity / yaw_rate * (cos(theta) - cos(theta + yaw_rate * delta_t));
-            p->theta += yaw_rate * delta_t;
+            double d_theta = yaw_rate * delta_t;
+            double angle = theta + d_theta;
+            p->x += velocity / yaw_rate * (sin(angle) - sin(theta));
+            p->y += velocity / yaw_rate * (cos(theta) - cos(angle));
+            p->theta += d_theta;
         }
 
         // Add noise
@@ -110,7 +111,6 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
                 map_id = p.id;
             }
         }
-
         // set the observation's id to the nearest predicted landmark's id
         observations[i].id = map_id;
     }
@@ -133,16 +133,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         // for each map landmark...
         for (unsigned int j = 0; j < map_landmarks.landmark_list.size(); j++) {
             // get id and x,y coordinates
-            float lm_x = map_landmarks.landmark_list[j].x_f;
-            float lm_y = map_landmarks.landmark_list[j].y_f;
-            int lm_id = map_landmarks.landmark_list[j].id_i;
+            float landmark_x = map_landmarks.landmark_list[j].x_f;
+            float landmark_y = map_landmarks.landmark_list[j].y_f;
+            int landmark_id = map_landmarks.landmark_list[j].id_i;
 
-            // only consider landmarks within sensor range of the particle (rather than using the "dist" method considering a circular 
-            // region around the particle, this considers a rectangular region but is computationally faster)
-            if (fabs(lm_x - p_x) <= sensor_range && fabs(lm_y - p_y) <= sensor_range) {
-
-            // add prediction to vector
-            predictions.push_back(LandmarkObs{lm_id, lm_x, lm_y});
+            // only consider landmarks within sensor range of the particle
+            if (fabs(landmark_x - p_x) <= sensor_range && fabs(landmark_y - p_y) <= sensor_range) {
+                // add prediction to vector
+                predictions.push_back(LandmarkObs{landmark_id, landmark_x, landmark_y});
             }
         }
 
@@ -157,7 +155,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         // perform dataAssociation for the predictions and transformed observations on current particle
         dataAssociation(predictions, transformed_os);
         // reinit weight
-        particles[i].weight = 1.0;
+        particles[i].weight = INIT_WEIGHT;
 
         for (unsigned int j = 0; j < transformed_os.size(); j++) {
             // placeholders for observation and associated prediction coordinates
